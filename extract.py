@@ -3,27 +3,62 @@ import numpy as np
 import os
 import math
 
+import datetime
+from sunrise_sunset import SunriseSunset
+
 
 GOES_CHANNELS = ('M3C01', 'M3C02', 'M3C07', 'M3C09', 'M3C14', 'M3C15')
 
 
-def time_format_convert(date):
+def time_format_convert(date, to_julian=True):
     if type(date) != 'str':
         date = str(date)
 
-    year = date[:4]
-    month = int(date[4:6])
-    day = int(date[6:])
+    leap_year = False
+    year = int(date[:4])
+    if (year % 4) == 0:
+        if (year % 100) == 0:
+            if (year % 400) == 0:
+                leap_year = True
+        else:
+            leap_year = True
 
-    md = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] #2017
-    julian_day = day
-    for i in range(month):
-        julian_day += md[i]
-    julian_day = '00' + str(julian_day)
-    julian_day = julian_day[-3:]
+    if leap_year == False:
+        md = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] #2017
+    else:
+        md = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    return (year+julian_day, int(year), int(julian_day))
-#print(time_format_convert(20170101)[0])
+    if to_julian == True:
+        month = int(date[4:6])
+        day = int(date[6:8])
+
+        julian_day = day
+        for i in range(month):
+            julian_day += md[i]
+        julian_day = '00' + str(julian_day)
+        julian_day = julian_day[-3:]
+
+        return (str(year)+julian_day, int(year), int(julian_day))
+    else:
+        julian_day = date[4:7]
+        month = 0
+        day = int(julian_day)
+        for i in md:
+            if day > i:
+                month = month + 1
+                day = day - i
+            else:
+                break
+
+        hour = 0
+        minute = 0
+        if len(date) >= 9:
+            hour = int(date[7:9])
+        if len(date) >= 11:
+            minute = int(date[9:11])
+        
+        return datetime.datetime(year, month, day, hour, minute)
+
 
 def cut_filename(f):
     seg = f.split('_')
@@ -200,8 +235,38 @@ class PathSet(object):
         seg = f.split('_')
         time = seg[3][1:12]
         return time
+
+
+class VisibleLight(object):
+    def __init__(self, date, latitude, longitude):
+        self.date = date
+        self.latitude = latitude
+        self.longitude = longitude
+   
+    def convert_datetime_to_julian(self, date):
+        return date.strftime("%Y%j%H%M")
+
+    def convert_julian_to_datetime(self, julian_date):
+        return time_format_convert(julian_date, to_julian=False)
+
+    def isVisibility(self):
+        if isinstance(self.date, str):
+            date = self.convert_julian_to_datetime(self.date)
+        elif isinstance(self.date, datetime.datetime):
+            date = self.date
         
- 
+        ro = SunriseSunset(dt=date, latitude=self.latitude, longitude=self.longitude)
+        sunrise_time, sunset_time = ro.calculate()
+        #print("sunrise : %s - sunset : %s" % (sunrise_time, sunset_time))
+
+        if sunset_time.__le__(sunrise_time):
+            sunset_time = sunset_time.replace(day = (sunset_time.day+1) )
+
+        if sunrise_time.__le__(date) and date.__le__(sunset_time):
+            return True
+        return False
+
+
 class HurricaneExtraction(object):
     def __init__(self, hur_data_path, hur_track_file, save_path='./', select_date=None):
         self.path_set = PathSet(hur_data_path)
@@ -358,6 +423,16 @@ class HurricaneExtraction(object):
             
             return True
         
+        def judge_visibility():
+            visibility = {}
+            for hl in hur_loc:
+                if len(hl) <= 0:
+                    continue
+                vl = VisibleLight(date=time, latitude=hl['Location'][0], longitude=hl['Location'][1])
+                visibility[hl['Name']] = vl.isVisibility()
+            return visibility
+
+
         section = np.asarray(section)
         while True:
             try:
@@ -367,6 +442,7 @@ class HurricaneExtraction(object):
 
                 time = data_list[0][0]
                 hur_loc = self.best_track.find_hurricane_location(time)
+                visibility = judge_visibility()
 
                 hur_extraction_data = {}
                 ex_angle = []
@@ -411,30 +487,37 @@ class HurricaneExtraction(object):
                         #print('A')
 
                     g16nc.close()
-                self.save_extraction_data(hur_extraction_data, time)
+                self.save_extraction_data(hur_extraction_data, time, visibility)
             
             except StopIteration:
                 break
             except OSError:
-                print('有文件出错啦')
+                print('有文件出错啦:%s' % str(dl[1]))
                 continue
 
-    def save_extraction_data(self, hur_extraction_data, time):
+    def save_extraction_data(self, hur_extraction_data, time, visibility):
         hur_names = list(hur_extraction_data.keys())
 
         for hur_name in hur_names:
-            path = os.path.join(self.save_path, hur_name)
-            if os.path.exists(path) == False or os.path.isdir(path) == False:
-                os.mkdir(path)
-            
             data = hur_extraction_data[hur_name]
             if len(data) < len(GOES_CHANNELS):
                 print("缺少数据: %s" % (str(hur_name)))
                 continue
 
             # 与 GOES_CHANNELS 吻合
-            file_path = os.path.join(path, time)
+            if visibility[hur_name] is False:
+                path = os.path.join(self.save_path, hur_name, 'NotVisible', time[:7])
+                if os.path.exists(path) == False or os.path.isdir(path) == False:
+                    os.makedirs(path)
+                file_path = os.path.join(path, time+'_NotVis')
+            else:
+                path = os.path.join(self.save_path, hur_name, 'Visible', time[:7])
+                if os.path.exists(path) == False or os.path.isdir(path) == False:
+                    os.makedirs(path)
+                file_path = os.path.join(path, time)
+
             data = self.convert_float_to_unsigned(data)
+
             np.savez(file=file_path, M3C01=data[0], M3C02=data[1], M3C07=data[2], M3C09=data[3], M3C14=data[4], M3C15=data[5])
             print('save to %s' %(file_path))
 
@@ -455,12 +538,15 @@ class HurricaneExtraction(object):
 
 
 
+if __name__ == "__main__":
+    # tfc = time_format_convert('20202180622', to_julian=False)
+    # vl = VisibleLight(date='20202180019', latitude=39.1068, longitude=-94.566)
+    # vli = vl.isVisibility()
 
-if __name__ == "__main__": 
     hur_data_path = './Data/ABI-L1b-RadC/'
     best_track_file = './Data/best-track/2017-4hurricane-best-track.txt'
 
-    he = HurricaneExtraction(hur_data_path, best_track_file, './Data/NpyData/', select_date='2017253')
+    he = HurricaneExtraction(hur_data_path, best_track_file, './Data/NpyData/', select_date=None)
     he.hurricane_extraction(section=(256, 256))
 
     # jd = time_format_convert('20170910')  #253
