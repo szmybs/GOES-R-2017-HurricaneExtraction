@@ -259,8 +259,9 @@ class VisibleLight(object):
         sunrise_time, sunset_time = ro.calculate()
         #print("sunrise : %s - sunset : %s" % (sunrise_time, sunset_time))
 
+        # day is out of range for month  August 31th
         if sunset_time.__le__(sunrise_time):
-            sunset_time = sunset_time.replace(day = (sunset_time.day+1) )
+            sunset_time = sunset_time + datetime.timedelta(days=1)
 
         if sunrise_time.__le__(date) and date.__le__(sunset_time):
             return True
@@ -506,10 +507,10 @@ class HurricaneExtraction(object):
 
             # 与 GOES_CHANNELS 吻合
             if visibility[hur_name] is False:
-                path = os.path.join(self.save_path, hur_name, 'NotVisible', time[:7])
+                path = os.path.join(self.save_path, hur_name, 'Invisible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
                     os.makedirs(path)
-                file_path = os.path.join(path, time+'_NotVis')
+                file_path = os.path.join(path, time+'_Invis')
             else:
                 path = os.path.join(self.save_path, hur_name, 'Visible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
