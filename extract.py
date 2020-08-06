@@ -7,7 +7,7 @@ import datetime
 from sunrise_sunset import SunriseSunset
 
 
-GOES_CHANNELS = ('M3C01', 'M3C02', 'M3C07', 'M3C09', 'M3C14', 'M3C15')
+GOES_CHANNELS = ('M3C01', 'M3C07', 'M3C09', 'M3C14', 'M3C15')
 
 
 def time_format_convert(date, to_julian=True):
@@ -518,7 +518,7 @@ class HurricaneExtraction(object):
 
             data = self.convert_float_to_unsigned(data)
 
-            np.savez(file=file_path, M3C01=data[0], M3C02=data[1], M3C07=data[2], M3C09=data[3], M3C14=data[4], M3C15=data[5])
+            np.savez(file=file_path, M3C01=data[0], M3C07=data[2], M3C09=data[3], M3C14=data[4], M3C15=data[5])
             print('save to %s' %(file_path))
 
 
@@ -528,7 +528,6 @@ class HurricaneExtraction(object):
 
         data = []
         data.append(data_set['M3C01'])
-        data.append(data_set['M3C02'])
         data.append(data_set['M3C07'])
         data.append(data_set['M3C09'])
         data.append(data_set['M3C14'])
