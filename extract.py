@@ -395,6 +395,7 @@ class HurricaneExtraction(object):
                 es_angle.append({'Location': tmp, 'Name': hl['Name']})
             return es_angle
         
+        # 不再通过经纬度确定边界，实测会出现 一个很小的负数 不小于0的情况 使用<0
         def judge_bound(center, extract_bound, image_bound):
             y_image_bound = image_bound[0]
             x_image_bound = image_bound[1]
@@ -461,12 +462,7 @@ class HurricaneExtraction(object):
                         ex_name = ex['Name']
 
                         hur_center = np.asarray(ex_loc)
-                        scale_factor = np.asarray( (g16nc.variables['y'].scale_factor, g16nc.variables['x'].scale_factor) )
-
-                        flag = judge_bound( center=hur_center, extract_bound=np.multiply(section_scaled, scale_factor), image_bound=(y_image_bound, x_image_bound) )
-                        if flag == False:
-                            print("台风不在观测区域内: %s - %s - %s" % (ex_name, time, dl[1]))
-                            continue
+                        #scale_factor = np.asarray( (g16nc.variables['y'].scale_factor, g16nc.variables['x'].scale_factor) )
                         
                         y_eye_grid = ((hur_center[0] - y_image_bound[0]) / (y_image_bound[1] - y_image_bound[0])) * size[0]
                         x_eye_grid = ((hur_center[1] - x_image_bound[0]) / (x_image_bound[1] - x_image_bound[0])) * size[1]
@@ -474,6 +470,10 @@ class HurricaneExtraction(object):
 
                         north_west = (eye_grid - (section_scaled / 2)).astype(np.int32)
                         south_east = (eye_grid + (section_scaled / 2)).astype(np.int32)
+
+                        if north_west[0] < 0 or north_west[1] < 0 or south_east[0] > size[0] or south_east[1] > size[1]:
+                            print("台风不在观测区域内: %s - %s - %s" % (ex_name, time, dl[1]))
+                            continue
                         
                         rad = g16nc.variables['Rad'][ north_west[0]: south_east[0], north_west[1]: south_east[1] ]
                         rad = np.ma.fix_invalid(rad, fill_value=rad.min)
@@ -505,10 +505,10 @@ class HurricaneExtraction(object):
 
             # 与 GOES_CHANNELS 吻合
             if visibility[hur_name] is False:
-                path = os.path.join(self.save_path, hur_name, 'NotVisible', time[:7])
+                path = os.path.join(self.save_path, hur_name, 'Invisible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
                     os.makedirs(path)
-                file_path = os.path.join(path, time+'_NotVis')
+                file_path = os.path.join(path, time+'_Invis')
             else:
                 path = os.path.join(self.save_path, hur_name, 'Visible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
