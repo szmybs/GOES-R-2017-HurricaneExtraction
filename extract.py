@@ -311,7 +311,6 @@ class HurricaneExtraction(object):
 
     '''
     M3C01_Range = [-25.937, 804.036]
-    M3C02_Range = [-20.290, 628.987]
     M3C07_Range = [-0.0376, 25.590]
     M3C09_Range = [-0.824, 45.291]
     M3C14_Range = [-1.719, 200.902]
@@ -320,7 +319,6 @@ class HurricaneExtraction(object):
     @classmethod
     def normalize_using_physics(self, data):
         Range = [[-25.937, 804.036],
-                 [-20.290, 628.987],
                  [-0.0376, 25.590],
                  [-0.824, 45.291],
                  [-1.719, 200.902],
@@ -337,16 +335,16 @@ class HurricaneExtraction(object):
             pass
 
     '''
-    scale_factor = (0.812106364, 0.158592367, 0.001564351, 0.022539101,
+    scale_factor = (0.812106364, 0.001564351, 0.022539101,
                     0.049492208, 0.052774108)
-    add_offset = (-25.93664701, -20.28991094, -0.03760000, -0.82360000,
+    add_offset = (-25.93664701, -0.03760000, -0.82360000,
                     -1.71870000, -1.75580000)
     '''
     @classmethod
     def convert_float_to_unsigned(self, float_data):
-        scale_factor = (0.812106364, 0.158592367, 0.001564351, 0.022539101,
+        scale_factor = (0.812106364, 0.001564351, 0.022539101,
                         0.049492208, 0.052774108)
-        add_offset = (-25.93664701, -20.28991094, -0.03760000, -0.82360000,
+        add_offset = (-25.93664701, -0.03760000, -0.82360000,
                       -1.71870000, -1.75580000)
         
         if isinstance(float_data, list):
@@ -507,10 +505,10 @@ class HurricaneExtraction(object):
 
             # 与 GOES_CHANNELS 吻合
             if visibility[hur_name] is False:
-                path = os.path.join(self.save_path, hur_name, 'Invisible', time[:7])
+                path = os.path.join(self.save_path, hur_name, 'NotVisible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
                     os.makedirs(path)
-                file_path = os.path.join(path, time+'_Invis')
+                file_path = os.path.join(path, time+'_NotVis')
             else:
                 path = os.path.join(self.save_path, hur_name, 'Visible', time[:7])
                 if os.path.exists(path) == False or os.path.isdir(path) == False:
@@ -519,7 +517,7 @@ class HurricaneExtraction(object):
 
             data = self.convert_float_to_unsigned(data)
 
-            np.savez(file=file_path, M3C01=data[0], M3C07=data[2], M3C09=data[3], M3C14=data[4], M3C15=data[5])
+            np.savez(file=file_path, M3C01=data[0], M3C07=data[1], M3C09=data[2], M3C14=data[3], M3C15=data[4])
             print('save to %s' %(file_path))
 
 
