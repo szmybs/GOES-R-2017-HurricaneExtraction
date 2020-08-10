@@ -62,34 +62,15 @@ def goes16_5channels_scale_dir(root_path, save_path, read_data_func):
                     d = read_data_func(dp)
                     #d = HurricaneExtraction.convert_unsigned_to_float(d)
                     dfs = FixedScale.scale_to_fixed_size(d, 256)
-                    dfs = np.asarray(dfs)
+                    dfs = (np.asarray(dfs)).astype(np.uint16)
 
                     file_save_loc = os.path.join(new_path, os.path.splitext(df)[0])
                     np.save(file_save_loc, dfs)
+                    print("save to %s" % (file_save_loc))
 
 
 
 if __name__ == "__main__":
-
-    # import matplotlib.pyplot as plt
-
-    # file_path = "D:\\Code\\TyphoonExtraction\\Data\\NpyData\\IRMA\\Visible\\2017253\\20172531622.npz"
-
-    # #relpath = os.path.relpath(path=file_path, start="D:\\")
-    # #split = os.path.split(file_path)
-    # #splittxt = os.path.splitext(file_path)
-
-    # hd = HurricaneExtraction.read_extraction_data(file_path)
-
-    # msc01 = FixedScale.goes_conv2d(hd[0], 8)
-
-    # fig = plt.figure(figsize=(8,8),dpi=200)
-    # im = plt.imshow(msc01, cmap='Greys_r')
-    # cb = fig.colorbar(im, orientation='horizontal')
-    # cb.set_ticks([1, 100, 200, 300, 400, 500, 600])
-    # cb.set_label('Radiance (W m-2 sr-1 um-1)')
-    # plt.show()
-
     root_path = "./Data/NpyData/"
     save_path = "./Data/ScaledData/"
 
