@@ -37,11 +37,11 @@ class HurricaneGenerator(object):
         datas = sorted(os.listdir(data_path))
         for data in datas:
             dp = os.path.join(data_path, data)
-            yield(dp)
-            #yield(read_data_func(dp))
+            #yield(dp)
+            yield(read_data_func(dp))
     
 
-def name_visibility_date_dir(root_path, read_data_func):
+def name_visibility_date_dir_generator(root_path, read_data_func):
     while True:
         name_dirs = HurricaneGenerator.directory_downstream(root_path)
 
@@ -53,7 +53,7 @@ def name_visibility_date_dir(root_path, read_data_func):
                 date_dirs = HurricaneGenerator.directory_downstream(visibility_dir)
 
                 for date_dir in date_dirs:
-                    odg = HurricaneGenerator.one_dircetory_generator(date_dir, read_data_func)
+                    odg = HurricaneGenerator.one_dircetory_generator(date_dir, read_npy_hurricane_data)    #使用读取npy的内部函数
                     while True:
                         try:
                             hdg = next(odg)
@@ -61,6 +61,8 @@ def name_visibility_date_dir(root_path, read_data_func):
                         except StopIteration:
                             break
     
+    def read_npy_hurricane_data(file_path):
+        return np.load(file_path)
 
 
 if __name__ == "__main__":
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     from extract import HurricaneExtraction
 
     root_path = ".\\Data\\NpyData\\"
-    nvdd = name_visibility_date_dir(root_path, HurricaneExtraction.read_extraction_data)
+    nvdd = name_visibility_date_dir_generator(root_path, HurricaneExtraction.read_extraction_data)
 
     for i in range(10):
         tmp = next(nvdd)
